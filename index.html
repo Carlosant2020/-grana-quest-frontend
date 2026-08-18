@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grana Quest — Sua jornada financeira</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
+<script>
+  // Fallback: se o jsDelivr estiver bloqueado na sua rede, tenta o cdnjs.
+  window.addEventListener('DOMContentLoaded', () => {
+    if (typeof Chart === 'undefined') {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js';
+      document.head.appendChild(s);
+    }
+  });
+</script>
+<style>
+  :root{
+    --bg: #0E1B18; --bg-alt: #122420; --surface: #16302A; --surface-hi: #1C3D34;
+    --line: #244A40; --lime: #C7F26A; --lime-dim: #8FB84F; --gold: #E8C468;
+    --coral: #FF8B6B; --sky: #7FD8D0; --lavender: #B8A6E8; --rose: #E88FB0;
+    --text: #EAF3EE; --text-dim: #8FADA3; --text-faint: #5E7A70; --danger: #FF6B6B; --radius: 16px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ background: radial-gradient(ellipse 1200px 800px at 20% -10%, #163A30 0%, var(--bg) 55%); color: var(--text); font-family:'Inter',sans-serif; min-height:100vh; overflow-x:hidden; }
+  ::selection{ background: var(--lime); color:#0E1B18; }
+  h1,h2,h3,.display{ font-family:'Space Grotesk', sans-serif; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  /* AUTH SCREEN */
+  .auth-shell{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .auth-card{ width:380px; max-width:100%; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:32px; }
+  .auth-brand{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .auth-brand span.mark{ font-size:26px; }
+  .auth-brand span.name{ font-size:20px; font-weight:700; }
+  .auth-brand span.name b{ color:var(--lime); font-weight:700; }
+  .auth-sub{ color:var(--text-dim); font-size:13.5px; margin-bottom:24px; }
+  .auth-tabs{ display:flex; gap:6px; background:var(--bg-alt); border-radius:12px; padding:4px; margin-bottom:22px; }
+  .auth-tab{ flex:1; text-align:center; padding:9px; border-radius:9px; font-size:13.5px; font-weight:600; cursor:pointer; color:var(--text-dim); border:none; background:none; }
+  .auth-tab.active{ background:var(--surface-hi); color:var(--lime); }
+  .auth-error{ background:#3a1f1f; border:1px solid #5a2a2a; color:#ffb4b4; font-size:13px; padding:10px 12px; border-radius:10px; margin-bottom:14px; display:none; }
+  .auth-error.show{ display:block; }
+  .auth-hint{ font-size:11.5px; color:var(--text-faint); margin-top:8px; }
+
+  .app{ display:none; flex-direction: row; min-height:100vh; }
+  .app.ready{ display:flex; }
+
+  .sidebar{ width:232px; flex-shrink:0; padding:28px 16px; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:24px; }
+  .brand{ display:flex; align-items:center; gap:10px; padding:0 8px; }
+  .brand-mark{ font-size:22px; }
+  .brand-name{ font-size:17px; font-weight:700; letter-spacing:-0.01em; }
+  .brand-name span{ color: var(--lime); }
+  .user-chip{ display:flex; align-items:center; gap:8px; padding:8px; background:var(--bg-alt); border:1px solid var(--line); border-radius:12px; font-size:12.5px; }
+  .user-chip .av{ width:26px; height:26px; border-radius:50%; background:var(--surface-hi); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--lime); flex-shrink:0; }
+  .user-chip .em{ color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+  .logout-btn{ background:none; border:none; color:var(--text-faint); cursor:pointer; font-size:13px; }
+  .logout-btn:hover{ color:var(--coral); }
+
+  .nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{ display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:12px; color:var(--text-dim); font-size:14.5px; font-weight:500; cursor:pointer; border:none; background:none; text-align:left; width:100%; transition: background .15s, color .15s; }
+  .nav-item:hover{ background:var(--surface); color:var(--text); }
+  .nav-item.active{ background:var(--surface-hi); color:var(--lime); }
+  .nav-item .ic{ font-size:17px; width:20px; text-align:center; }
+
+  .side-plant{ margin-top:auto; background:var(--bg-alt); border:1px solid var(--line); border-radius:var(--radius); padding:16px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .side-plant svg{ width:100%; height:110px; }
+  .side-plant .lvl-label{ font-size:12px; color:var(--text-dim); text-align:center; }
+  .side-plant .lvl-num{ color:var(--lime); font-weight:700; }
+
+  .main{ flex:1; padding:32px 40px 60px; max-width:1100px; }
+  .view{ display:none; animation: fadeIn .35s ease; }
+  .view.active{ display:block; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+
+  .page-head{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:26px; flex-wrap:wrap; gap:12px;}
+  .page-head h1{ font-size:26px; font-weight:700; letter-spacing:-0.01em; }
+  .page-head p{ color:var(--text-dim); font-size:14px; margin-top:4px; }
+  .eyebrow{ color:var(--lime); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; background:var(--lime); color:#0E1B18; border:none; padding:11px 18px; border-radius:12px; font-weight:600; font-size:14px; cursor:pointer; transition: transform .12s, box-shadow .12s; font-family:'Inter',sans-serif; }
+  .btn:hover{ transform:translateY(-1px); box-shadow:0 6px 20px rgba(199,242,106,.25); }
+  .btn:disabled{ opacity:.6; cursor:default; transform:none; box-shadow:none; }
+  .btn.ghost{ background:transparent; color:var(--text); border:1px solid var(--line); }
+  .btn.ghost:hover{ box-shadow:none; border-color:var(--lime-dim); }
+  .btn.sm{ padding:7px 12px; font-size:12.5px; }
+  .btn.block{ width:100%; }
+
+  .grid{ display:grid; gap:16px; }
+  .grid-4{ grid-template-columns: repeat(4, 1fr); }
+  .grid-3{ grid-template-columns: 2fr 1fr; }
+  @media (max-width: 900px){ .grid-4{grid-template-columns: repeat(2,1fr);} .grid-3{grid-template-columns:1fr;} }
+
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px; }
+  .stat-card .stat-label{ color:var(--text-dim); font-size:12.5px; font-weight:500; display:flex; align-items:center; gap:6px;}
+  .stat-card .stat-value{ font-size:25px; font-weight:700; margin-top:8px; font-family:'JetBrains Mono',monospace; }
+  .stat-card .stat-sub{ font-size:12px; margin-top:6px; color:var(--text-faint); }
+
+  .section-title{ font-size:15px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; }
+
+  .xp-wrap{ margin-top:14px; }
+  .xp-track{ height:10px; background:var(--bg-alt); border-radius:99px; overflow:hidden; border:1px solid var(--line); }
+  .xp-fill{ height:100%; background:linear-gradient(90deg, var(--lime-dim), var(--lime)); border-radius:99px; transition:width .5s ease; }
+  .xp-meta{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-dim); margin-top:6px; }
+
+  .cat-chip{ display:inline-flex; align-items:center; gap:7px; padding:8px 14px; border-radius:99px; border:1px solid var(--line); background:var(--bg-alt); font-size:13.5px; cursor:pointer; color:var(--text-dim); transition: all .12s; }
+  .cat-chip.selected{ border-color:var(--lime); color:var(--text); background:var(--surface-hi); }
+  .cat-row{ display:flex; flex-wrap:wrap; gap:8px; }
+
+  .field{ margin-bottom:16px; }
+  .field label{ font-size:12.5px; color:var(--text-dim); font-weight:500; display:block; margin-bottom:7px; }
+  .field input, .field select{ width:100%; background:var(--bg-alt); border:1px solid var(--line); color:var(--text); padding:11px 13px; border-radius:10px; font-size:14px; font-family:'Inter',sans-serif; }
+  .field input:focus, .field select:focus{ outline:2px solid var(--lime-dim); border-color:transparent; }
+
+  .expense-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--line); }
+  .expense-row:last-child{ border-bottom:none; }
+  .exp-icon{ width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
+  .exp-info{ flex:1; min-width:0; }
+  .exp-info .exp-cat{ font-size:14px; font-weight:600; }
+  .exp-info .exp-note{ font-size:12px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .exp-amount{ font-family:'JetBrains Mono',monospace; font-weight:600; font-size:14.5px; }
+  .exp-date{ font-size:11.5px; color:var(--text-faint); width:70px; text-align:right; }
+  .exp-del{ background:none; border:none; color:var(--text-faint); cursor:pointer; font-size:15px; padding:4px; }
+  .exp-del:hover{ color:var(--coral); }
+  .empty-state{ text-align:center; padding:30px 10px; color:var(--text-dim); font-size:13.5px; }
+  .loading-state{ text-align:center; padding:30px 10px; color:var(--text-faint); font-size:13px; }
+
+  .budget-item{ margin-bottom:16px; }
+  .budget-top{ display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; margin-bottom:6px; }
+  .budget-top .label{ display:flex; align-items:center; gap:7px; font-weight:500; flex-shrink:0; }
+  .budget-track{ height:8px; background:var(--bg-alt); border-radius:99px; overflow:hidden; }
+  .budget-fill{ height:100%; border-radius:99px; transition:width .4s; }
+
+  .badge-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap:14px; }
+  .badge-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px; text-align:center; position:relative; overflow:hidden; }
+  .badge-card.locked{ opacity:.45; }
+  .badge-card .b-icon{ font-size:30px; margin-bottom:10px; }
+  .badge-card .b-name{ font-weight:700; font-size:14px; margin-bottom:4px; }
+  .badge-card .b-desc{ font-size:11.5px; color:var(--text-dim); }
+  .badge-card.unlocked::after{ content:'✓'; position:absolute; top:10px; right:12px; color:var(--lime); font-weight:700; }
+
+  .mission-row{ display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .mission-row:last-child{border-bottom:none;}
+  .mission-check{ width:22px; height:22px; border-radius:7px; border:2px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .mission-check.done{ background:var(--lime); border-color:var(--lime); color:#0E1B18; }
+  .mission-text{ flex:1; font-size:13.5px; }
+  .mission-text.done{ color:var(--text-faint); text-decoration:line-through; }
+  .mission-xp{ font-size:11.5px; color:var(--gold); font-family:'JetBrains Mono',monospace; }
+
+  .chat-shell{ display:flex; flex-direction:column; height:72vh; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+  .chat-log{ flex:1; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:14px; }
+  .msg{ max-width:78%; padding:12px 15px; border-radius:14px; font-size:14px; line-height:1.5; }
+  .msg.user{ align-self:flex-end; background:var(--lime); color:#0E1B18; border-bottom-right-radius:4px; font-weight:500; }
+  .msg.bot{ align-self:flex-start; background:var(--bg-alt); border:1px solid var(--line); border-bottom-left-radius:4px; white-space:pre-wrap; }
+  .msg.bot.typing{ color:var(--text-dim); font-style:italic; }
+  .chat-suggestions{ display:flex; gap:8px; flex-wrap:wrap; padding:0 22px 14px; }
+  .sugg{ font-size:12px; background:var(--bg-alt); border:1px solid var(--line); color:var(--text-dim); padding:7px 12px; border-radius:99px; cursor:pointer; }
+  .sugg:hover{ border-color:var(--lime-dim); color:var(--text); }
+  .chat-input-row{ display:flex; gap:10px; padding:16px; border-top:1px solid var(--line); }
+  .chat-input-row input{ flex:1; background:var(--bg-alt); border:1px solid var(--line); color:var(--text); padding:12px 15px; border-radius:12px; font-size:14px; }
+  .chat-input-row input:focus{ outline:2px solid var(--lime-dim); border-color:transparent; }
+
+  .toast{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--lime); color:#0E1B18; font-weight:600; font-size:13.5px; padding:12px 20px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.4); opacity:0; pointer-events:none; transition: all .35s ease; z-index:50; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast.error{ background: var(--coral); }
+
+  .conn-banner{ background:#3a1f1f; border:1px solid #5a2a2a; color:#ffb4b4; font-size:13px; padding:12px 16px; border-radius:12px; margin-bottom:20px; display:none; }
+  .conn-banner.show{ display:block; }
+
+  @media (max-width: 780px){
+    .app{ flex-direction:column; }
+    .sidebar{ width:100%; flex-direction:row; align-items:center; border-right:none; border-bottom:1px solid var(--line); padding:14px 16px; overflow-x:auto; gap:14px; }
+    .side-plant{ display:none; }
+    .user-chip{ display:none; }
+    .nav{ flex-direction:row; }
+    .main{ padding:22px 18px 50px; }
+    .grid-4{ grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div class="auth-shell" id="authShell">
+  <div class="auth-card">
+    <div class="auth-brand"><span class="mark">🌱</span><span class="name">Grana<b>Quest</b></span></div>
+    <div class="auth-sub">Conecte-se ao seu backend local para começar.</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Entrar</button>
+      <button class="auth-tab" data-tab="register">Criar conta</button>
+    </div>
+
+    <div class="auth-error" id="authError"></div>
+
+    <form id="loginForm">
+      <div class="field"><label>E-mail</label><input type="email" id="loginEmail" required placeholder="voce@exemplo.com"></div>
+      <div class="field"><label>Senha</label><input type="password" id="loginPassword" required placeholder="••••••••"></div>
+      <button class="btn block" type="submit" id="loginBtn">Entrar</button>
+    </form>
+
+    <form id="registerForm" style="display:none;">
+      <div class="field"><label>Nome</label><input type="text" id="regName" placeholder="Seu nome"></div>
+      <div class="field"><label>E-mail</label><input type="email" id="regEmail" required placeholder="voce@exemplo.com"></div>
+      <div class="field"><label>Senha (mínimo 8 caracteres)</label><input type="password" id="regPassword" required minlength="8" placeholder="••••••••"></div>
+      <button class="btn block" type="submit" id="registerBtn">Criar conta</button>
+    </form>
+
+    <div class="auth-hint">API: <span id="apiBaseLabel"></span> — ajuste no topo do arquivo se seu backend estiver em outra porta.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark">🌱</span><span class="brand-name">Grana<span>Quest</span></span></div>
+    <div class="user-chip">
+      <div class="av" id="userAvatar">?</div>
+      <div class="em" id="userEmail"></div>
+      <button class="logout-btn" id="logoutBtn" title="Sair">⏻</button>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-view="dashboard"><span class="ic">📊</span> Painel</button>
+      <button class="nav-item" data-view="gastos"><span class="ic">➕</span> Registrar gasto</button>
+      <button class="nav-item" data-view="orcamento"><span class="ic">🎯</span> Orçamentos</button>
+      <button class="nav-item" data-view="chat"><span class="ic">💬</span> Chat financeiro</button>
+      <button class="nav-item" data-view="conquistas"><span class="ic">🏆</span> Conquistas</button>
+    </nav>
+    <div class="side-plant">
+      <svg id="plantSvg" viewBox="0 0 120 130"></svg>
+      <div class="lvl-label">Nível <span class="lvl-num" id="sideLevelNum">1</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="conn-banner" id="connBanner">Não foi possível falar com o backend. Confirme que ele está rodando em <span id="connBannerUrl"></span> e que o CORS permite esta origem.</div>
+
+    <section class="view active" id="view-dashboard">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Painel geral</div>
+          <h1>Olá! Vamos ver como está sua grana.</h1>
+          <p>Dados vindos direto do seu banco de dados local.</p>
+        </div>
+        <button class="btn ghost sm" id="refreshBtn">↻ Atualizar</button>
+      </div>
+
+      <div class="grid grid-4" style="margin-bottom:16px;">
+        <div class="card stat-card"><div class="stat-label">💰 Gasto no mês</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub" id="statTotalSub"></div></div>
+        <div class="card stat-card"><div class="stat-label">🔥 Sequência</div><div class="stat-value" id="statStreak">—</div><div class="stat-sub">Registre gastos todo dia para manter viva</div></div>
+        <div class="card stat-card"><div class="stat-label">⭐ Nível</div><div class="stat-value" id="statLevel">—</div><div class="stat-sub" id="statXpSub"></div></div>
+        <div class="card stat-card"><div class="stat-label">🏅 Conquistas</div><div class="stat-value" id="statBadges">—</div><div class="stat-sub">Desbloqueadas até agora</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="section-title">Sua evolução <span style="font-weight:400;color:var(--text-dim);font-size:12.5px;" id="xpToNext"></span></div>
+        <div class="xp-wrap"><div class="xp-track"><div class="xp-fill" id="xpFill" style="width:0%"></div></div></div>
+      </div>
+
+      <div class="grid grid-3">
+        <div class="card"><div class="section-title">Gastos por categoria</div><canvas id="catChart" height="220"></canvas></div>
+        <div class="card"><div class="section-title">Missões de hoje</div><div id="missionList" class="loading-state">Carregando…</div></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">Últimos lançamentos</div>
+        <div id="recentList" class="loading-state">Carregando…</div>
+      </div>
+    </section>
+
+    <section class="view" id="view-gastos">
+      <div class="page-head"><div><div class="eyebrow">Novo lançamento</div><h1>Registrar um gasto</h1><p>Cada gasto registrado te dá XP e ajuda a manter sua sequência.</p></div></div>
+      <div class="grid grid-3">
+        <div class="card">
+          <div class="field"><label>Categoria</label><div class="cat-row" id="catPicker"></div></div>
+          <div class="field"><label>Valor (R$)</label><input type="number" id="expAmount" placeholder="0,00" step="0.01" min="0"></div>
+          <div class="field"><label>Descrição (opcional)</label><input type="text" id="expNote" placeholder="Ex: almoço com a equipe"></div>
+          <div class="field"><label>Data</label><input type="date" id="expDate"></div>
+          <button class="btn block" id="addExpenseBtn">Adicionar gasto (+10 XP)</button>
+        </div>
+        <div class="card"><div class="section-title">Histórico completo</div><div id="fullList" class="loading-state" style="max-height:480px; overflow-y:auto;">Carregando…</div></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-orcamento">
+      <div class="page-head"><div><div class="eyebrow">Metas mensais</div><h1>Orçamento por categoria</h1><p>Defina quanto pretende gastar em cada área e acompanhe o quanto já usou.</p></div></div>
+      <div class="card" id="budgetList"><div class="loading-state">Carregando…</div></div>
+    </section>
+
+    <section class="view" id="view-chat">
+      <div class="page-head"><div><div class="eyebrow">Assistente</div><h1>Pergunte sobre suas finanças</h1><p>O assistente responde com base nos dados reais do seu banco.</p></div></div>
+      <div class="chat-shell">
+        <div class="chat-log" id="chatLog"></div>
+        <div class="chat-suggestions" id="chatSuggestions"></div>
+        <div class="chat-input-row"><input type="text" id="chatInput" placeholder="Ex: onde eu mais gastei essa semana?"><button class="btn sm" id="chatSendBtn">Enviar</button></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-conquistas">
+      <div class="page-head"><div><div class="eyebrow">Progresso</div><h1>Suas conquistas</h1><p>Desbloqueie insígnias mantendo bons hábitos financeiros.</p></div></div>
+      <div class="badge-grid" id="badgeGrid"><div class="loading-state">Carregando…</div></div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= CONFIG ================= */
+// Ajuste aqui se seu backend estiver rodando em outra porta.
+const API_BASE = 'https://grana-quest-backend-production.up.railway.app/api/v1';
+document.getElementById('apiBaseLabel').textContent = API_BASE;
+document.getElementById('connBannerUrl').textContent = API_BASE;
+
+/* ================= AUTH STATE (em memória — recarregar a página exige login de novo) ================= */
+let accessToken = null;
+let currentUser = null;
+
+/* ================= APP STATE (cache local do que veio da API) ================= */
+let categories = [];
+let expenses = [];
+let selectedCat = null;
+let chatHistoryCache = [];
+
+/* ================= HELPERS ================= */
+function fmtBRL(v){ return Number(v).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(iso){ const d = new Date(iso.slice(0,10)+'T00:00:00'); return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'short'}); }
+function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+function showToast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.classList.remove('show'), 3200);
+}
+
+function showConnBanner(show){
+  document.getElementById('connBanner').classList.toggle('show', !!show);
+}
+
+/* ================= API CLIENT ================= */
+// Faz fetch autenticado; se der 401, tenta renovar o token via refresh cookie
+// uma vez e repete a chamada original.
+async function api(path, options = {}, isRetry = false){
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+  if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
+
+  let res;
+  try{
+    res = await fetch(API_BASE + path, { ...options, headers, credentials: 'include' });
+  }catch(err){
+    showConnBanner(true);
+    throw new Error('Não foi possível conectar ao backend.');
+  }
+  showConnBanner(false);
+
+  if (res.status === 401 && !isRetry && path !== '/auth/login' && path !== '/auth/register'){
+    const refreshed = await tryRefresh();
+    if (refreshed) return api(path, options, true);
+    logout();
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
+
+  if (!res.ok){
+    let msg = 'Erro na requisição.';
+    try{ const data = await res.json(); msg = data.error || msg; }catch{}
+    throw new Error(msg);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+async function tryRefresh(){
+  try{
+    const res = await fetch(API_BASE + '/auth/refresh', { method:'POST', credentials:'include' });
+    if (!res.ok) return false;
+    const data = await res.json();
+    accessToken = data.accessToken;
+    return true;
+  }catch{ return false; }
+}
+
+/* ================= AUTH FLOW ================= */
+document.querySelectorAll('.auth-tab').forEach(tab=>{
+  tab.onclick = () => {
+    document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('loginForm').style.display = tab.dataset.tab === 'login' ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = tab.dataset.tab === 'register' ? 'block' : 'none';
+    hideAuthError();
+  };
+});
+
+function showAuthError(msg){
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideAuthError(){ document.getElementById('authError').classList.remove('show'); }
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideAuthError();
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  try{
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const data = await api('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
+    accessToken = data.accessToken;
+    currentUser = data.user;
+    await enterApp();
+  }catch(err){
+    showAuthError(err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+});
+
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideAuthError();
+  const btn = document.getElementById('registerBtn');
+  btn.disabled = true; btn.textContent = 'Criando conta…';
+  try{
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const data = await api('/auth/register', { method:'POST', body: JSON.stringify({ name, email, password }) });
+    accessToken = data.accessToken;
+    currentUser = data.user;
+    await enterApp();
+  }catch(err){
+    showAuthError(err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Criar conta';
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', logout);
+
+async function logout(){
+  try{ await fetch(API_BASE + '/auth/logout', { method:'POST', credentials:'include' }); }catch{}
+  accessToken = null; currentUser = null;
+  document.getElementById('app').classList.remove('ready');
+  document.getElementById('authShell').style.display = 'flex';
+}
+
+async function enterApp(){
+  document.getElementById('authShell').style.display = 'none';
+  document.getElementById('app').classList.add('ready');
+  document.getElementById('userEmail').textContent = currentUser.email;
+  document.getElementById('userAvatar').textContent = (currentUser.name || currentUser.email)[0].toUpperCase();
+  document.getElementById('expDate').value = todayISO();
+  renderChatSuggestions();
+  renderChatLog();
+  await loadEverything();
+}
+
+/* ================= PLANT SVG ================= */
+function levelFromXp(xp){
+  let level = 1, threshold = 100, cum = 0;
+  while (xp >= cum + threshold) { cum += threshold; level++; threshold = 100 + (level-1)*40; }
+  return { level, into: xp - cum, span: threshold };
+}
+function renderPlant(level){
+  const svg = document.getElementById('plantSvg');
+  const stemHeight = 30 + Math.min(level,6)*10;
+  const leaves = Math.min(level, 6);
+  let leafShapes = '';
+  for (let i=0;i<leaves;i++){
+    const y = 118 - (i+1)*(stemHeight/(leaves+1));
+    const side = i % 2 === 0 ? 1 : -1;
+    leafShapes += `<ellipse cx="${60+side*14}" cy="${y}" rx="12" ry="6" fill="#C7F26A" opacity="${0.55+(i*0.07)}" transform="rotate(${side*30} ${60+side*14} ${y})"/>`;
+  }
+  svg.innerHTML = `
+    <ellipse cx="60" cy="120" rx="34" ry="7" fill="#0E1B18" opacity=".5"/>
+    <rect x="54" y="${118-stemHeight}" width="6" height="${stemHeight}" rx="3" fill="#8FB84F"/>
+    ${leafShapes}
+    <ellipse cx="60" cy="120" rx="20" ry="6" fill="#1C3D34"/>`;
+  document.getElementById('sideLevelNum').textContent = level;
+}
+
+/* ================= LOAD DATA ================= */
+async function loadEverything(){
+  await Promise.all([ loadCategories(), loadExpenses(), loadGamification(), loadBadges(), loadMissions() ]);
+  renderCatPicker();
+  renderDashboard();
+  renderFullList();
+  renderBudgets();
+}
+
+async function loadCategories(){
+  try{ categories = await api('/categories'); if (!selectedCat && categories[0]) selectedCat = categories[0].id; }
+  catch(err){ showToast(err.message, true); }
+}
+async function loadExpenses(){
+  try{ expenses = await api('/expenses'); }
+  catch(err){ showToast(err.message, true); }
+}
+
+let gamificationSummary = { xp:0, level:1, xpIntoLevel:0, xpForNextLevel:100, streak:0 };
+async function loadGamification(){
+  try{ gamificationSummary = await api('/gamification/summary'); }
+  catch(err){ showToast(err.message, true); }
+}
+let badgesCache = [];
+async function loadBadges(){
+  try{ badgesCache = await api('/gamification/badges'); renderBadges(); }
+  catch(err){ showToast(err.message, true); }
+}
+let missionsCache = [];
+async function loadMissions(){
+  try{ missionsCache = await api('/gamification/missions'); }
+  catch(err){ showToast(err.message, true); }
+}
+
+/* ================= RENDER: DASHBOARD ================= */
+let catChartInstance = null;
+function renderDashboard(){
+  const totalSpent = categories.reduce((s,c)=> s + Number(c.spentThisMonth||0), 0);
+  const totalBudget = categories.reduce((s,c)=> s + Number(c.monthlyBudget||0), 0);
+
+  document.getElementById('statTotal').textContent = fmtBRL(totalSpent);
+  document.getElementById('statTotalSub').textContent = `de ${fmtBRL(totalBudget)} planejados`;
+  document.getElementById('statStreak').innerHTML = `${gamificationSummary.streak} dias 🔥`;
+  document.getElementById('statLevel').textContent = gamificationSummary.level;
+  document.getElementById('statXpSub').textContent = `${gamificationSummary.xp} XP total`;
+  document.getElementById('statBadges').textContent = `${badgesCache.filter(b=>b.unlocked).length}/${badgesCache.length || 8}`;
+
+  document.getElementById('xpFill').style.width = `${(gamificationSummary.xpIntoLevel/gamificationSummary.xpForNextLevel)*100}%`;
+  document.getElementById('xpToNext').textContent = `${gamificationSummary.xpIntoLevel}/${gamificationSummary.xpForNextLevel} XP para o nível ${gamificationSummary.level+1}`;
+
+  const ctx = document.getElementById('catChart');
+  if (typeof Chart === 'undefined'){
+    ctx.parentElement.innerHTML = '<div class="section-title">Gastos por categoria</div><div class="empty-state">Não foi possível carregar a biblioteca de gráficos (conexão bloqueada). O resto do app funciona normalmente.</div>';
+    return;
+  }
+  if (catChartInstance) catChartInstance.destroy();
+  catChartInstance = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels: categories.map(c=>c.name), datasets:[{ data: categories.map(c=>Number(c.spentThisMonth||0)), backgroundColor: categories.map(c=>c.color||'#8FADA3'), borderColor:'#16302A', borderWidth:2 }] },
+    options:{ cutout:'65%', plugins:{ legend:{ position:'bottom', labels:{ color:'#8FADA3', font:{size:11}, boxWidth:10, padding:12 } }, tooltip:{ callbacks:{ label:(c)=> ` ${c.label}: ${fmtBRL(c.raw)}` } } } }
+  });
+
+  const mEl = document.getElementById('missionList');
+  mEl.innerHTML = missionsCache.length ? missionsCache.map(m=>`
+    <div class="mission-row">
+      <div class="mission-check ${m.done?'done':''}">${m.done?'✓':''}</div>
+      <div class="mission-text ${m.done?'done':''}">${m.text}</div>
+      <div class="mission-xp">+${m.xp} XP</div>
+    </div>`).join('') : `<div class="empty-state">Sem missões no momento.</div>`;
+
+  const rEl = document.getElementById('recentList');
+  const recent = [...expenses].sort((a,b)=> b.expenseDate.localeCompare(a.expenseDate)).slice(0,5);
+  rEl.innerHTML = recent.length ? recent.map(expenseRowHTML).join('') : `<div class="empty-state">Nenhum gasto ainda. Registre o primeiro na aba "Registrar gasto" ✨</div>`;
+  attachDeleteHandlers(rEl);
+
+  renderPlant(gamificationSummary.level);
+}
+
+function catInfo(id){ return categories.find(c=>c.id===id) || { name:'—', icon:'🧾', color:'#8FADA3' }; }
+
+function expenseRowHTML(e){
+  const c = e.category ? { name:e.category.name, icon:e.category.icon, color:e.category.color } : catInfo(e.categoryId);
+  return `<div class="expense-row" data-id="${e.id}">
+    <div class="exp-icon" style="background:${c.color}22; color:${c.color}">${c.icon}</div>
+    <div class="exp-info"><div class="exp-cat">${c.name}</div><div class="exp-note">${e.note || '—'}</div></div>
+    <div class="exp-date">${fmtDate(e.expenseDate)}</div>
+    <div class="exp-amount">${fmtBRL(e.amount)}</div>
+    <button class="exp-del" data-del="${e.id}" title="Remover">✕</button>
+  </div>`;
+}
+
+function attachDeleteHandlers(container){
+  container.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.onclick = async () => {
+      try{
+        await api(`/expenses/${btn.dataset.del}`, { method:'DELETE' });
+        await loadExpenses();
+        await loadCategories();
+        renderDashboard(); renderFullList(); renderBudgets();
+        showToast('Gasto removido.');
+      }catch(err){ showToast(err.message, true); }
+    };
+  });
+}
+
+/* ================= RENDER: GASTOS ================= */
+function renderCatPicker(){
+  const el = document.getElementById('catPicker');
+  el.innerHTML = categories.map(c => `<button type="button" class="cat-chip ${selectedCat===c.id?'selected':''}" data-cat="${c.id}">${c.icon} ${c.name}</button>`).join('');
+  el.querySelectorAll('.cat-chip').forEach(chip=>{
+    chip.onclick = () => { selectedCat = chip.dataset.cat; renderCatPicker(); };
+  });
+}
+
+function renderFullList(){
+  const el = document.getElementById('fullList');
+  const all = [...expenses].sort((a,b)=> b.expenseDate.localeCompare(a.expenseDate));
+  el.innerHTML = all.length ? all.map(expenseRowHTML).join('') : `<div class="empty-state">Sua lista de gastos vai aparecer aqui.</div>`;
+  attachDeleteHandlers(el);
+}
+
+document.getElementById('addExpenseBtn').addEventListener('click', async () => {
+  const amountInput = document.getElementById('expAmount');
+  const noteInput = document.getElementById('expNote');
+  const dateInput = document.getElementById('expDate');
+  const amount = parseFloat(amountInput.value);
+  if (!amount || amount <= 0){ showToast('Informe um valor válido.', true); return; }
+  if (!selectedCat){ showToast('Selecione uma categoria.', true); return; }
+
+  const btn = document.getElementById('addExpenseBtn');
+  btn.disabled = true;
+  try{
+    const result = await api('/expenses', {
+      method:'POST',
+      body: JSON.stringify({ categoryId: selectedCat, amount, note: noteInput.value.trim(), expenseDate: dateInput.value || todayISO() })
+    });
+    amountInput.value = ''; noteInput.value = '';
+    let msg = `+${result.xpGained} XP registrado!`;
+    showToast(msg);
+    if (result.newlyUnlocked && result.newlyUnlocked.length){
+      setTimeout(()=> showToast(`🏅 Nova(s) conquista(s) desbloqueada(s)!`), 1000);
+    }
+    await loadEverything();
+  }catch(err){
+    showToast(err.message, true);
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+/* ================= RENDER: ORCAMENTO ================= */
+function renderBudgets(){
+  const el = document.getElementById('budgetList');
+  el.innerHTML = categories.map(c=>{
+    const spent = Number(c.spentThisMonth||0);
+    const budget = Number(c.monthlyBudget||0) || 1;
+    const pct = Math.min((spent/budget)*100, 100);
+    const over = spent > Number(c.monthlyBudget||0);
+    return `<div class="budget-item">
+      <div class="budget-top">
+        <span class="label">${c.icon} ${c.name}</span>
+        <span class="mono" style="color:${over?'var(--danger)':'var(--text-dim)'}">${fmtBRL(spent)} /</span>
+        <input type="number" data-budget="${c.id}" value="${c.monthlyBudget}" class="mono" style="width:90px; background:var(--bg-alt); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:4px 8px; font-size:12.5px;">
+      </div>
+      <div class="budget-track"><div class="budget-fill" style="width:${pct}%; background:${over?'var(--danger)':c.color}"></div></div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-budget]').forEach(inp=>{
+    inp.onchange = async () => {
+      const v = parseFloat(inp.value);
+      if (v < 0) return;
+      try{
+        await api(`/categories/${inp.dataset.budget}`, { method:'PATCH', body: JSON.stringify({ monthlyBudget: v }) });
+        await loadCategories();
+        renderDashboard(); renderBudgets();
+        showToast('Orçamento atualizado.');
+      }catch(err){ showToast(err.message, true); }
+    };
+  });
+}
+
+/* ================= RENDER: CONQUISTAS ================= */
+function renderBadges(){
+  const el = document.getElementById('badgeGrid');
+  el.innerHTML = badgesCache.length ? badgesCache.map(b=>`
+    <div class="badge-card ${b.unlocked?'unlocked':'locked'}">
+      <div class="b-icon">${b.icon}</div>
+      <div class="b-name">${b.name}</div>
+      <div class="b-desc">${b.desc}</div>
+    </div>`).join('') : `<div class="empty-state">Carregando conquistas…</div>`;
+}
+
+/* ================= CHAT ================= */
+function renderChatSuggestions(){
+  const sugg = ['Onde eu mais gastei este mês?', 'Estou dentro do orçamento?', 'Me dá uma dica pra economizar', 'Quanto ainda posso gastar em Lazer?'];
+  document.getElementById('chatSuggestions').innerHTML = sugg.map(s=>`<button class="sugg" data-sugg="${s}">${s}</button>`).join('');
+  document.querySelectorAll('[data-sugg]').forEach(b=>{
+    b.onclick = () => { document.getElementById('chatInput').value = b.dataset.sugg; sendChat(); };
+  });
+}
+
+function renderChatLog(){
+  const el = document.getElementById('chatLog');
+  if (chatHistoryCache.length === 0){
+    el.innerHTML = `<div class="msg bot">Oi! Eu sou seu assistente da GranaQuest 🌱 Pergunte qualquer coisa sobre os gastos que você já registrou — por categoria, por período, ou peça dicas pra economizar.</div>`;
+    return;
+  }
+  el.innerHTML = chatHistoryCache.map(m => `<div class="msg ${m.role === 'user' ? 'user' : 'bot'}">${escapeHtml(m.content)}</div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function loadChatHistory(){
+  try{
+    const history = await api('/chat/history');
+    chatHistoryCache = history.map(m => ({ role: m.role, content: m.content }));
+    renderChatLog();
+  }catch(err){ /* silencioso: chat ainda funciona sem histórico */ }
+}
+
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const question = input.value.trim();
+  if (!question) return;
+  input.value = '';
+  chatHistoryCache.push({ role:'user', content: question });
+  renderChatLog();
+
+  const el = document.getElementById('chatLog');
+  const typingEl = document.createElement('div');
+  typingEl.className = 'msg bot typing';
+  typingEl.textContent = 'digitando…';
+  el.appendChild(typingEl);
+  el.scrollTop = el.scrollHeight;
+
+  try{
+    const data = await api('/chat/message', { method:'POST', body: JSON.stringify({ message: question }) });
+    typingEl.remove();
+    chatHistoryCache.push({ role:'assistant', content: data.reply });
+    renderChatLog();
+  }catch(err){
+    typingEl.remove();
+    chatHistoryCache.push({ role:'assistant', content: `Não consegui responder: ${err.message}` });
+    renderChatLog();
+  }
+}
+document.getElementById('chatSendBtn').addEventListener('click', sendChat);
+document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+
+/* ================= NAV ================= */
+function switchView(name){
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${name}`));
+  if (name === 'chat' && chatHistoryCache.length === 0) loadChatHistory();
+}
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+document.getElementById('refreshBtn').addEventListener('click', loadEverything);
+</script>
+</body>
+</html>
