@@ -162,7 +162,19 @@
   .chat-input-row input{ flex:1; background:var(--bg-alt); border:1px solid var(--line); color:var(--text); padding:12px 15px; border-radius:12px; font-size:14px; }
   .chat-input-row input:focus{ outline:2px solid var(--lime-dim); border-color:transparent; }
 
-  .toast{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--lime); color:#0E1B18; font-weight:600; font-size:13.5px; padding:12px 20px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.4); opacity:0; pointer-events:none; transition: all .35s ease; z-index:50; }
+  .dev-footer{
+    position: fixed;
+    bottom: 0; left: 232px; right: 0;
+    padding: 10px 40px;
+    background: linear-gradient(to top, var(--bg) 70%, transparent);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 11.5px; color: var(--text-faint); pointer-events: none; z-index: 10;
+  }
+  .dev-footer b{ color: var(--lime-dim); font-weight: 600; }
+  .dev-footer .sep{ opacity: .4; }
+  @media (max-width: 780px){ .dev-footer{ left: 0; padding: 10px 18px; } }
+
+    .toast{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--lime); color:#0E1B18; font-weight:600; font-size:13.5px; padding:12px 20px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.4); opacity:0; pointer-events:none; transition: all .35s ease; z-index:50; }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
   .toast.error{ background: var(--coral); }
 
@@ -305,12 +317,16 @@
   </main>
 </div>
 
+<footer class="dev-footer">
+  🌱 Desenvolvido por <b>Carlos Delfino</b> <span class="sep">&middot;</span> Florianópolis, Brasil
+</footer>
+
 <div class="toast" id="toast"></div>
 
 <script>
 /* ================= CONFIG ================= */
 // Ajuste aqui se seu backend estiver rodando em outra porta.
-const API_BASE = 'https://grana-quest-backend-production.up.railway.app/api/v1';
+const API_BASE = 'http://localhost:4000/api/v1';
 document.getElementById('apiBaseLabel').textContent = API_BASE;
 document.getElementById('connBannerUrl').textContent = API_BASE;
 
@@ -580,11 +596,14 @@ function attachDeleteHandlers(container){
   container.querySelectorAll('[data-del]').forEach(btn=>{
     btn.onclick = async () => {
       try{
-        await api(`/expenses/${btn.dataset.del}`, { method:'DELETE' });
+        const result = await api(`/expenses/${btn.dataset.del}`, { method:'DELETE' });
         await loadExpenses();
         await loadCategories();
+        await loadGamification();
+        await loadBadges();
         renderDashboard(); renderFullList(); renderBudgets();
-        showToast('Gasto removido.');
+        const xpMsg = result && result.xpReversed ? ` (−${result.xpReversed} XP revertido)` : '';
+        showToast(`Gasto removido.${xpMsg}`);
       }catch(err){ showToast(err.message, true); }
     };
   });
