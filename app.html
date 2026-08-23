@@ -187,6 +187,12 @@
   }
   .eye-btn:hover{ color:var(--text-dim); }
 
+  .auth-forgot-link{ text-align:right; margin-top:6px; }
+  .auth-forgot-link a{ font-size:12px; color:var(--text-faint); text-decoration:none; cursor:pointer; }
+  .auth-forgot-link a:hover{ color:var(--lime-dim); }
+  .auth-success{ background:#1a3a2a; border:1px solid #2a5a3a; color:#7FD8D0; font-size:13px; padding:10px 12px; border-radius:10px; margin-bottom:14px; display:none; }
+  .auth-success.show{ display:block; }
+
   .conn-banner{ background:#3a1f1f; border:1px solid #5a2a2a; color:#ffb4b4; font-size:13px; padding:12px 16px; border-radius:12px; margin-bottom:20px; display:none; }
   .conn-banner.show{ display:block; }
 
@@ -215,7 +221,26 @@
     </div>
 
     <div class="auth-error" id="authError"></div>
-    <div class="auth-verify" id="authVerify" style="display:none; text-align:center; padding:16px 0;">
+    <div class="auth-success" id="authSuccess"></div>
+    
+    <div id="authForgotPanel" style="display:none;">
+      <div style="font-size:30px;text-align:center;margin-bottom:12px;">🔑</div>
+      <h3 style="font-size:16px;margin-bottom:8px;text-align:center;">Redefinir senha</h3>
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.5;text-align:center;">Digite seu e-mail e enviaremos um link para criar uma nova senha.</p>
+      <div class="field"><label>E-mail</label><input type="email" id="forgotEmail" placeholder="voce@exemplo.com"></div>
+      <button class="btn block" id="forgotSubmitBtn" type="button">Enviar link de redefinição</button>
+      <div style="text-align:center;margin-top:12px;"><a style="font-size:12px;color:var(--text-faint);cursor:pointer;" id="backToLoginBtn">← Voltar ao login</a></div>
+    </div>
+
+    <div id="authResetPanel" style="display:none;">
+      <div style="font-size:30px;text-align:center;margin-bottom:12px;">🔐</div>
+      <h3 style="font-size:16px;margin-bottom:8px;text-align:center;">Nova senha</h3>
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.5;text-align:center;">Digite sua nova senha abaixo.</p>
+      <div class="field"><label>Nova senha (mínimo 8 caracteres)</label><div class="pass-wrap"><input type="password" id="resetPassword" minlength="8" placeholder="••••••••"><button type="button" class="eye-btn" data-target="resetPassword" title="Mostrar senha">👁</button></div></div>
+      <button class="btn block" id="resetSubmitBtn" type="button">Salvar nova senha</button>
+    </div>
+
+<div class="auth-verify" id="authVerify" style="display:none; text-align:center; padding:16px 0;">
       <div style="font-size:36px; margin-bottom:12px;">📬</div>
       <h3 style="font-size:16px; margin-bottom:8px;">Verifique seu e-mail</h3>
       <p style="font-size:13px; color:var(--text-dim); margin-bottom:20px; line-height:1.5;">
@@ -232,6 +257,7 @@
       <div class="field"><label>E-mail</label><input type="email" id="loginEmail" required placeholder="voce@exemplo.com"></div>
       <div class="field"><label>Senha</label><div class="pass-wrap"><input type="password" id="loginPassword" required placeholder="••••••••"><button type="button" class="eye-btn" data-target="loginPassword" title="Mostrar senha">👁</button></div></div>
       <button class="btn block" type="submit" id="loginBtn">Entrar</button>
+      <div class="auth-forgot-link"><a id="forgotLink">Esqueci minha senha</a></div>
     </form>
 
     <form id="registerForm" style="display:none;">
@@ -347,7 +373,7 @@
 <script>
 /* ================= CONFIG ================= */
 // Ajuste aqui se seu backend estiver rodando em outra porta.
-const API_BASE = 'https://grana-quest-backend-production.up.railway.app/api/v1';
+const API_BASE = 'http://localhost:4000/api/v1';
 document.getElementById('apiBaseLabel').textContent = API_BASE;
 document.getElementById('connBannerUrl').textContent = API_BASE;
 
@@ -836,6 +862,85 @@ document.querySelectorAll('.eye-btn').forEach(btn => {
     btn.title = showing ? 'Mostrar senha' : 'Esconder senha';
   });
 });
+
+/* ================= ESQUECI MINHA SENHA ================= */
+function showAuthSuccess(msg){
+  const el = document.getElementById('authSuccess');
+  el.textContent = msg; el.classList.add('show');
+}
+
+function showPanel(panelId){
+  // Esconde tudo
+  ['loginForm','registerForm','authForgotPanel','authResetPanel','authVerify'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  document.querySelector('.auth-tabs').style.display = 'none';
+  document.getElementById('authSub').style.display = 'none';
+  // Mostra o painel certo
+  const panel = document.getElementById(panelId);
+  if(panel) panel.style.display = 'block';
+}
+
+function resetAuthScreen(){
+  document.querySelector('.auth-tabs').style.display = 'flex';
+  document.getElementById('authSub').style.display = 'block';
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('registerForm').style.display = 'none';
+  document.querySelectorAll('.auth-tab').forEach(t=> t.classList.toggle('active', t.dataset.tab==='login'));
+  hideAuthError();
+  document.getElementById('authSuccess').classList.remove('show');
+}
+
+document.getElementById('forgotLink').addEventListener('click', ()=>{
+  hideAuthError();
+  showPanel('authForgotPanel');
+});
+
+document.getElementById('backToLoginBtn').addEventListener('click', resetAuthScreen);
+
+document.getElementById('forgotSubmitBtn').addEventListener('click', async () => {
+  const email = document.getElementById('forgotEmail').value.trim();
+  if (!email){ showToast('Informe seu e-mail.', true); return; }
+  const btn = document.getElementById('forgotSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try{
+    await api('/auth/forgot-password', { method:'POST', body: JSON.stringify({ email }) });
+    showPanel('loginForm');
+    document.querySelector('.auth-tabs').style.display = 'flex';
+    document.getElementById('authSub').style.display = 'block';
+    showAuthSuccess('Link enviado! Verifique sua caixa de entrada.');
+  }catch(err){
+    showToast(err.message, true);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Enviar link de redefinição';
+  }
+});
+
+// Verifica se voltou do link de reset (?reset=1&token=...)
+const resetToken = new URLSearchParams(window.location.search).get('token');
+const isReset = new URLSearchParams(window.location.search).get('reset') === '1';
+if (isReset && resetToken){
+  window.history.replaceState({}, '', window.location.pathname);
+  showPanel('authResetPanel');
+}
+
+document.getElementById('resetSubmitBtn').addEventListener('click', async () => {
+  const password = document.getElementById('resetPassword').value;
+  if (!password || password.length < 8){ showToast('Mínimo 8 caracteres.', true); return; }
+  const btn = document.getElementById('resetSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    await api('/auth/reset-password', { method:'POST', body: JSON.stringify({ token: resetToken, password }) });
+    resetAuthScreen();
+    showAuthSuccess('Senha redefinida com sucesso! Faça login com a nova senha.');
+  }catch(err){
+    showToast(err.message, true);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Salvar nova senha';
+  }
+});
+
 </script>
 </body>
 </html>
