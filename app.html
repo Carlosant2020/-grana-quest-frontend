@@ -373,8 +373,8 @@
 /* ================= CONFIG ================= */
 // Ajuste aqui se seu backend estiver rodando em outra porta.
 const API_BASE = 'https://grana-quest-backend-production.up.railway.app/api/v1';
-document.getElementById('apiBaseLabel').textContent = API_BASE;
-document.getElementById('connBannerUrl').textContent = API_BASE;
+const connBannerUrl = document.getElementById('connBannerUrl');
+if(connBannerUrl) connBannerUrl.textContent = API_BASE;
 
 /* ================= AUTH STATE (em memória — recarregar a página exige login de novo) ================= */
 let accessToken = null;
